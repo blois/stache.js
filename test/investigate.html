@@ -1,0 +1,82 @@
+<!doctype html>
+
+<title>Test: Performance</title>
+<meta charset="UTF-8">
+
+<script src="../node_modules/mustache/mustache.js"></script>
+<script src="../stache.js"></script>
+
+<!--body-->
+<div>
+
+<script>
+
+  var stringTemplate = [
+    'Hello {{name}}',
+    'You have just won ${{value}}!',
+    '{{#in_ca}}',
+    'Well, ${{ taxed_value }}, after taxes.',
+    '{{/in_ca}}'].join('\n');
+
+  var domContents = [
+    '<ul>',
+    '{{#users}}',
+    '  {{>user}}',
+    '{{/users}}',
+    '</ul>',
+    '<ul>',
+    '{{#users}}',
+    '  {{>user}}',
+    '{{/users}}',
+    '</ul>',
+    '<ul>',
+    '{{#users}}',
+    '  {{>user}}',
+    '{{/users}}',
+    '</ul>',
+    '<ul>',
+    '{{#users}}',
+    '  {{>user}}',
+    '{{/users}}',
+    '</ul>',
+    '<ul>',
+    '{{#users}}',
+    '  {{>user}}',
+    '{{/users}}',
+    '</ul>',
+    '<ul>',
+    '{{#users}}',
+    '  {{>user}}',
+    '{{/users}}',
+    '</ul>'].join('\n');
+
+  var domUserContents = [
+    '<li>',
+    '  <p>Howdy I&apos;m <a href="http://twitter.com/{{ twitter }}">@{{ twitter }}</a></p>',
+    '  <p>I work for {{ employer }} as a {{ job_title }}.</p>',
+    '</li>'].join('\n');
+
+  var domData = {
+    users: [
+      { twitter: 'peteblois', employer: 'Binary Fabrications', job_title: 'Random Fool'},
+      { twitter: 'jobfree', employer: 'no one', job_title: 'free spirit'},
+      { twitter: 'theMinion', employer: 'the task master', job_title: 'grunt'}
+    ]
+  };
+
+  var compiledStacheTemplate = stache.fromHTML(domContents);
+  var compiledStacheUser = stache.fromHTML(domUserContents);
+
+  window.console.profile();
+  var start = Date.now();
+  for (var i = 0; i < 1000; ++i) {
+    var div = document.createElement('div');
+    var dom = compiledStacheTemplate.render(domData, {user: compiledStacheUser });
+    div.appendChild(dom);
+  }
+  var elapsed = Date.now() - start;
+  window.console.profileEnd();
+  window.console.log('took ' + elapsed);
+
+</script>
+</div>

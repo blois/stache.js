@@ -1,0 +1,23 @@
+<!doctype html>
+
+<title>Test: Templating</title>
+<meta charset="UTF-8">
+
+<link rel="stylesheet" href="../node_modules/mocha/mocha.css" />
+<script src="../node_modules/mocha/mocha.js"></script>
+<script src="../node_modules/chai/chai.js"></script>
+<script src="../stache.js"></script>
+<script src="js/utils.js"></script>
+
+<!--body-->
+
+<div id="mocha"></div>
+<script>
+  mocha.setup({ui: 'tdd', slow: 1000});
+</script>
+<script src="js/test.js"></script>
+<script src="js/mustachejs.js"></script>
+
+<script>
+  mocha.run();
+</script>

@@ -1,0 +1,26 @@
+{
+  "name": "stache.js",
+  "version": "0.0.1",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/peteblois/stache.js.git"
+  },
+  "main": "stache.js",
+  "keywords": [
+    "templating",
+    "mustache"
+  ],
+  "devDependencies": {
+    "mocha": "*",
+    "chai": "*",
+    "grunt": "*",
+    "grunt-karma": "*",
+    "karma-mocha": "*",
+    "karma-ie-launcher": "*",
+    "karma-safari-launcher": "*",
+    "karma-script-launcher": "*",
+    "mustache": "*",
+    "icanhaz": "*",
+    "benchmark": "*"
+  }
+}
