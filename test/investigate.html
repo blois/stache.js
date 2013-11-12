@@ -50,6 +50,13 @@
     '{{/users}}',
     '</ul>'].join('\n');
 
+  var domContents = [
+    '<ul>',
+    '{{#users}}',
+    '  {{>user}}',
+    '{{/users}}',
+    '</ul>'].join('\n');
+
   var domUserContents = [
     '<li>',
     '  <p>Howdy I&apos;m <a href="http://twitter.com/{{ twitter }}">@{{ twitter }}</a></p>',
@@ -68,12 +75,13 @@
   var compiledStacheUser = stache.fromHTML(domUserContents);
 
   var prof = true;
+  prof = false;
 
   if (prof) {
     window.console.profile();
   }
   var start = Date.now();
-  for (var i = 0; i < 1000; ++i) {
+  for (var i = 0; i < 10000; ++i) {
     var div = document.createElement('div');
     var dom = compiledStacheTemplate.render(domData, {user: compiledStacheUser });
     div.appendChild(dom);
