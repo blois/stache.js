@@ -1,34 +1,40 @@
 (function (scope) {
-  function createFragment(html, opt_contextTagName) {
-    var doc = document.implementation.createHTMLDocument('');
-    //var doc = document;
+  var parseDoc;
+  var parseRange;
 
+  function createFragment(html, opt_contextTagName) {
+    if (!parseDoc) {
+      parseDoc = document.implementation.createHTMLDocument('');
+      if (window.Range.prototype.createContextualFragment) {
+        parseRange = parseDoc.createRange();
+      }
+    }
     var parseContext;
     if (opt_contextTagName) {
-      parseContext = doc.createElement(opt_contextTagName);
-      doc.body.appendChild(parseContext);
+      parseContext = parseDoc.createElement(opt_contextTagName);
+      parseDoc.body.appendChild(parseContext);
     } else {
-      parseContext = doc.body;
+      parseContext = parseDoc.body;
     }
 
     if (window.Range.prototype.createContextualFragment) {
-      var range = doc.createRange();
-      range.selectNodeContents(parseContext);
-      var fragment = range.createContextualFragment(html);
+      parseRange.selectNodeContents(parseContext);
+      var fragment = parseRange.createContextualFragment(html);
 
-      if (parseContext != doc.body) {
-        doc.body.removeChild(parseContext);
+      if (parseContext != parseDoc.body) {
+        parseDoc.body.removeChild(parseContext);
       }
       return fragment;
     } else {
+      // IE9.
       parseContext.innerHTML = html;
 
       var fragment = document.createDocumentFragment();
       while (parseContext.firstChild) {
         fragment.appendChild(contextElement.firstChild);
       }
-      if (parseContext != doc.body) {
-        doc.body.removeChild(parseContext);
+      if (parseContext != parseDoc.body) {
+        parseDoc.body.removeChild(parseContext);
       }
       return fragment;
     }
@@ -38,7 +44,7 @@
     return new Template(fragment);
   }
 
-  function Template(fragment) {
+  Template = function(fragment) {
     this.root_ = new FragmentRenderer(fragment, null, null);
 
     var stack = [this.root_];
@@ -79,7 +85,7 @@
       var child = nodes[nodeIdx];
 
       if (child.nodeType == Node.TEXT_NODE) {
-        var tokens = parseMustacheDirectives_(child.textContent);
+        var tokens = parseMustacheDirectives(child.textContent);
         for (var tokenIdx = 0; tokenIdx < tokens.length; ++tokenIdx) {
           var proxy = document.createTextNode('');
           var token = tokens[tokenIdx];
@@ -91,21 +97,22 @@
           if (token.type == Directive.TEXT) {
             proxy.textContent = token.value;
             continue;
-          }
-          renderer = token.toRenderer(proxy);
-          if (renderer) {
-            stack[stack.length - 1].addRenderer(renderer);
-
-            if (renderer instanceof FragmentRenderer) {
-              stack.push(renderer);
-              ++detaching;
-            }
           } else if (token.type == Directive.END_SECTION) {
             if (stack[stack.length - 1].binding != token.value) {
               throw new Error('Mismatched values');
             }
             stack.splice(stack.length - 1, 1);
             --detaching;
+          } else {
+            renderer = token.toRenderer(proxy);
+            if (renderer) {
+              stack[stack.length - 1].addRenderer(renderer);
+
+              if (renderer instanceof FragmentRenderer) {
+                stack.push(renderer);
+                ++detaching;
+              }
+            }
           }
         }
         if (tokens.length) {
@@ -138,7 +145,7 @@
     var attributes = element.attributes;
     for (var i = 0; i < attributes.length; ++i) {
       var attr = attributes[i];
-      var directives = parseMustacheDirectives_(attr.textContent);
+      var directives = parseMustacheDirectives(attr.textContent);
       if (directives.length) {
         var attr = new AttributeRenderer(element, attr.name, directives);
         stack[stack.length - 1].addRenderer(attr);
@@ -148,7 +155,7 @@
 
   // Cribbed unceremoniously from:
   // https://github.com/toolkitchen/mdv/blob/stable/src/template_element.js
-  parseMustacheDirectives_ = function(s) {
+  function parseMustacheDirectives(s) {
     var result = [];
     var index = 0, lastIndex = 0;
     while (lastIndex < s.length) {
@@ -197,7 +204,7 @@
    *
    * @param {Node} destination
    */
-  function NodePath(destination)  {
+  NodePath = function(destination)  {
     this.path = [];
 
     var parent = destination.parentNode;
@@ -255,7 +262,7 @@
     }
 
     return value;
-  };
+  }
 
   function bindingFunction(binding) {
     if (binding == '.') {
@@ -509,7 +516,6 @@
     if (!partial) {
       this.insertionPath.insert(destination, document.createTextNode(''));
       return;
-      //throw new Error('Unable to find partial ' + this.binding);
     }
     var fragment = partial.expand(context, partials);
     this.insertionPath.insert(destination, fragment);
@@ -551,10 +557,10 @@
     this.placeholder.setAttribute(this.attributeName, value);
   };
 
-  function Directive(type, value) {
+  Directive = function(type, value) {
     this.type = type;
     this.value = value;
-  }
+  };
 
   Directive.TEXT = 'text';
   Directive.BINDING = 'binding';

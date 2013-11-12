@@ -46,6 +46,9 @@ function normalizeTextNodes(node) {
         child.remove();
       }
     } else {
+      if (currentText && !currentText.textContent) {
+        currentText.remove();
+      }
       currentText = null;
     }
     if (child.nodeType == Node.ELEMENT_NODE) {
@@ -62,4 +65,16 @@ function nodeToHTML(node) {
   var host = document.createElement('div');
   host.appendChild(node.cloneNode(true));
   return host.innerHTML;
+}
+
+function compare(html, expected, data) {
+  var fragment = stache.createFragment(html);
+  var template = stache.fromFragment(fragment);
+  var resultingFragment = template.render(data);
+  validateToHTML(resultingFragment, expected);
+}
+
+function validateToHTML(dom, html) {
+  var expectedDOM = stache.createFragment(html);
+  chai.assert.dom(dom, expectedDOM);
 }
