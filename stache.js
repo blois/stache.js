@@ -1,6 +1,7 @@
 (function (scope) {
   function createFragment(html, opt_contextTagName) {
     var doc = document.implementation.createHTMLDocument('');
+    //var doc = document;
 
     var parseContext;
     if (opt_contextTagName) {
@@ -80,31 +81,24 @@
       if (child.nodeType == Node.TEXT_NODE) {
         var tokens = parseMustacheDirectives_(child.textContent);
         for (var tokenIdx = 0; tokenIdx < tokens.length; ++tokenIdx) {
+          var proxy = document.createTextNode('');
           var token = tokens[tokenIdx];
+          if (detaching) {
+            stack[stack.length - 1].fragment.appendChild(proxy);
+          } else {
+            node.insertBefore(proxy, child);
+          }
           if (token.type == Directive.TEXT) {
-            var text = document.createTextNode(token.value);
-            if (detaching) {
-              stack[stack.length - 1].fragment.appendChild(text);
-            } else {
-              node.insertBefore(text, child);
-            }
+            proxy.textContent = token.value;
             continue;
           }
-          if (detaching) {
-            var proxy = document.createTextNode(token.value);
-            stack[stack.length - 1].fragment.appendChild(proxy);
-            renderer = token.toRenderer(proxy);
-            proxy.remove();
-          } else {
-            renderer = token.toRenderer(child);
-          }
+          renderer = token.toRenderer(proxy);
           if (renderer) {
             stack[stack.length - 1].addRenderer(renderer);
 
             if (renderer instanceof FragmentRenderer) {
               stack.push(renderer);
               ++detaching;
-              //child.remove();
             }
           } else if (token.type == Directive.END_SECTION) {
             if (stack[stack.length - 1].binding != token.value) {
@@ -146,8 +140,7 @@
       var attr = attributes[i];
       var directives = parseMustacheDirectives_(attr.textContent);
       if (directives.length) {
-        var attr = new AttributeRenderer(
-            new NodePath(element), attr.name, directives);
+        var attr = new AttributeRenderer(element, attr.name, directives);
         stack[stack.length - 1].addRenderer(attr);
       }
     }
@@ -217,17 +210,6 @@
       this.path.push(0);
     }
   };
-
-  /**
-   * @param {Node} root
-   */
-  NodePath.prototype.resolve = function(root) {
-    var node = root;
-    for (var i = 0; i < this.path.length; ++i) {
-      node = node.childNodes[this.path[i]];
-    }
-    return node;
-  }
 
   /**
    * @param {Node} root
@@ -361,8 +343,9 @@
    * @extends {BindingRenderer}
    * @constructor
    */
-  TextBindingRenderer = function(binding, insertionPath) {
-    BindingRenderer.call(this, binding, insertionPath);
+  TextBindingRenderer = function(binding, placeholder) {
+    BindingRenderer.call(this, binding, null);
+    this.placeholder = placeholder;
   };
   TextBindingRenderer.prototype = Object.create(BindingRenderer.prototype);
 
@@ -374,7 +357,7 @@
     if (value == undefined) {
       value = '';
     }
-    this.insertionPath.insert(destination, document.createTextNode(value));
+    this.placeholder.textContent = value;
   };
 
   /**
@@ -409,26 +392,21 @@
   FragmentRenderer = function(fragment, binding, insertionPath) {
     BindingRenderer.call(this, binding, insertionPath);
 
-    /**
-     * @type {!Array<!NodeRenderer>}
-     */
+    /** @type {!Array<!NodeRenderer>} */
     this.renderers = [];
-    /**
-     * @type {!DocumentFragment}
-     */
+    /** @type {!DocumentFragment} */
     this.fragment = fragment;
-
+    /** @type {!Array<!NodeRenderer>} */
     this.staticRenderers = [];
   };
   FragmentRenderer.prototype = Object.create(BindingRenderer.prototype);
 
   FragmentRenderer.prototype.addRenderer = function(renderer) {
-    this.renderers.push(renderer);
-    // if (renderer instanceof SectionRenderer) {
-
-    // } else {
-    //   this.staticRenderers.push(renderer);
-    // }
+    if (renderer instanceof TextBindingRenderer || renderer instanceof AttributeRenderer) {
+      this.staticRenderers.push(renderer);
+    } else {
+      this.renderers.push(renderer);
+    }
   };
 
   FragmentRenderer.prototype.expand = function(context, partials) {
@@ -467,10 +445,16 @@
       parent: context
     };
     if (value instanceof Array) {
-      for (var index = value.length - 1; index >= 0; --index) {
+      var path = this.insertionPath.path;
+      var parent = destination;
+      for (var i = 0; i < path.length - 1; ++i) {
+        parent = parent.childNodes[path[i]];
+      }
+      var insertionBefore = parent.childNodes[path[i]];
+      for (var index = 0; index < value.length; ++index) {
         scopedContext.data = value[index];
         var clone = this.expand(scopedContext, partials);
-        this.insertionPath.insert(destination, clone);
+        parent.insertBefore(clone, insertionBefore);
       }
     } else if (value) {
       this.insertionPath.insert(destination, this.expand(scopedContext, partials));
@@ -539,8 +523,9 @@
    * @extends {NodeRenderer}
    * @constructor
    */
-  AttributeRenderer = function(insertionPath, attributeName, directives) {
-    NodeRenderer.call(this, insertionPath);
+  AttributeRenderer = function(placeholder, attributeName, directives) {
+    NodeRenderer.call(this, null);
+    this.placeholder = placeholder;
     this.attributeName = attributeName;
     this.directives = directives;
   }
@@ -563,8 +548,7 @@
         value += resolveBinding(directive.value, stack[stack.length - 1]);
       }
     }
-    var element = this.insertionPath.resolve(destination);
-    element.setAttribute(this.attributeName, value);
+    this.placeholder.setAttribute(this.attributeName, value);
   };
 
   function Directive(type, value) {
@@ -607,15 +591,23 @@
   Directive.prototype.toRenderer = function(node) {
     switch(this.type) {
     case Directive.START_SECTION:
-      return new SectionRenderer(this.value, new NodePath(node));
+      var path = new NodePath(node);
+      node.remove();
+      return new SectionRenderer(this.value, path);
     case Directive.BINDING:
-      return new TextBindingRenderer(this.value, new NodePath(node));
+      return new TextBindingRenderer(this.value, node);
     case Directive.START_INV_SECTION:
-      return new ConditionalRenderer(this.value, new NodePath(node));
+      var path = new NodePath(node);
+      node.remove();
+      return new ConditionalRenderer(this.value, path);
     case Directive.PARTIAL_SECTION:
-      return new PartialRenderer(this.value, new NodePath(node));
+      var path = new NodePath(node);
+      node.remove();
+      return new PartialRenderer(this.value, path);
     case Directive.UNESCAPE_SECTION:
-      return new UnescapeRenderer(this.value, new NodePath(node));
+      var path = new NodePath(node);
+      node.remove();
+      return new UnescapeRenderer(this.value, path);
     }
     return null;
   };

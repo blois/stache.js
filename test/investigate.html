@@ -67,7 +67,11 @@
   var compiledStacheTemplate = stache.fromHTML(domContents);
   var compiledStacheUser = stache.fromHTML(domUserContents);
 
-  window.console.profile();
+  var prof = true;
+
+  if (prof) {
+    window.console.profile();
+  }
   var start = Date.now();
   for (var i = 0; i < 1000; ++i) {
     var div = document.createElement('div');
@@ -75,7 +79,9 @@
     div.appendChild(dom);
   }
   var elapsed = Date.now() - start;
-  window.console.profileEnd();
+  if (prof) {
+    window.console.profileEnd();
+  }
   window.console.log('took ' + elapsed);
 
 </script>
