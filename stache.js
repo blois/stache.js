@@ -2,6 +2,10 @@
   var parseDoc;
   var parseRange;
 
+  /**
+   * @param {string} html
+   * @param {string=} opt_contextTagName
+   */
   function createFragment(html, opt_contextTagName) {
     if (!parseDoc) {
       parseDoc = document.implementation.createHTMLDocument('');
@@ -31,7 +35,7 @@
 
       var fragment = document.createDocumentFragment();
       while (parseContext.firstChild) {
-        fragment.appendChild(contextElement.firstChild);
+        fragment.appendChild(parseContext.firstChild);
       }
       if (parseContext != parseDoc.body) {
         parseDoc.body.removeChild(parseContext);
@@ -44,12 +48,15 @@
     return new Template(fragment);
   }
 
-  Template = function(fragment) {
+  /**
+   * @constructor
+   */
+  function Template(fragment) {
     this.root_ = new FragmentRenderer(fragment, null, null);
 
     var stack = [this.root_];
     this.processNode_(fragment, stack);
-  };
+  }
 
   /**
    * @param {!Object} data
@@ -60,7 +67,7 @@
     var context = {data: data, parent: null};
 
     /**
-     * @type {Object<!FragmentRenderer>}
+     * @type {Object.<!FragmentRenderer>}
      */
     var partialRenderers;
     if (opt_partials) {
@@ -76,7 +83,7 @@
 
   /**
    * @param {!Node} node
-   * @param {!Array<!FragmentRenderer>} stack
+   * @param {!Array.<!FragmentRenderer>} stack
    */
   Template.prototype.processNode_ = function(node, stack) {
     var detaching = 0;
@@ -104,7 +111,7 @@
             stack.splice(stack.length - 1, 1);
             --detaching;
           } else {
-            renderer = token.toRenderer(proxy);
+            var renderer = token.toRenderer(proxy);
             if (renderer) {
               stack[stack.length - 1].addRenderer(renderer);
 
@@ -139,7 +146,7 @@
 
   /**
    * @param {!Element} element
-   * @param {!Array.<!FragmentRenderer> stack}
+   * @param {!Array.<!FragmentRenderer>} stack
    */
   Template.prototype.processAttributes_ = function(element, stack) {
     var attributes = element.attributes;
@@ -147,8 +154,8 @@
       var attr = attributes[i];
       var directives = parseMustacheDirectives(attr.textContent);
       if (directives.length) {
-        var attr = new AttributeRenderer(element, attr.name, directives);
-        stack[stack.length - 1].addRenderer(attr);
+        stack[stack.length - 1].addRenderer(
+            new AttributeRenderer(element, attr.name, directives));
       }
     }
   };
@@ -203,8 +210,9 @@
    * don't conflict.
    *
    * @param {Node} destination
+   * @constructor
    */
-  NodePath = function(destination)  {
+  function NodePath(destination)  {
     this.path = [];
 
     var parent = destination.parentNode;
@@ -216,7 +224,7 @@
     if (!this.path.length) {
       this.path.push(0);
     }
-  };
+  }
 
   /**
    * @param {Node} root
@@ -232,7 +240,7 @@
 
   /**
    * @param {string} binding
-   * @param {*} data
+   * @param {{data: *, parent: *}} context
    */
   function resolveBinding(binding, context) {
     if (binding == '.') {
@@ -314,32 +322,32 @@
    * @param {NodePath} insertionPath
    * @constructor
    */
-  NodeRenderer = function(insertionPath) {
+  function NodeRenderer(insertionPath) {
     this.insertionPath = insertionPath;
   };
 
   /**
    * @param {!Node} destination
    * @param {!Object} data
-   * @param {!Object<!FragmentRenderer> partials}
+   * @param {!Object.<!FragmentRenderer>} partials
    */
   NodeRenderer.prototype.render;
 
 
   /**
-   * @param {string} binding
-   * @param {!NodePath} insertionPath
+   * @param {string?} binding
+   * @param {NodePath} insertionPath
    * @extends {NodeRenderer}
    * @constructor
    */
-  BindingRenderer = function(binding, insertionPath) {
+  function BindingRenderer(binding, insertionPath) {
     NodeRenderer.call(this, insertionPath);
 
     this.binding = binding;
     if (binding) {
       this.bindingFn = bindingFunction(binding);
     }
-  };
+  }
   BindingRenderer.prototype = Object.create(NodeRenderer.prototype);
 
   BindingRenderer.prototype.getValue = function(context) {
@@ -350,10 +358,10 @@
    * @extends {BindingRenderer}
    * @constructor
    */
-  TextBindingRenderer = function(binding, placeholder) {
+  function TextBindingRenderer(binding, placeholder) {
     BindingRenderer.call(this, binding, null);
     this.placeholder = placeholder;
-  };
+  }
   TextBindingRenderer.prototype = Object.create(BindingRenderer.prototype);
 
   /**
@@ -371,9 +379,9 @@
    * @extends {BindingRenderer}
    * @constructor
    */
-  UnescapeRenderer = function(binding, insertionPath) {
+  function UnescapeRenderer(binding, insertionPath) {
     BindingRenderer.call(this, binding, insertionPath);
-  };
+  }
   UnescapeRenderer.prototype = Object.create(BindingRenderer.prototype);
 
   /**
@@ -396,16 +404,16 @@
    * @extends {BindingRenderer}
    * @constructor
    */
-  FragmentRenderer = function(fragment, binding, insertionPath) {
+  function FragmentRenderer(fragment, binding, insertionPath) {
     BindingRenderer.call(this, binding, insertionPath);
 
-    /** @type {!Array<!NodeRenderer>} */
+    /** @type {!Array.<!NodeRenderer>} */
     this.renderers = [];
     /** @type {!DocumentFragment} */
     this.fragment = fragment;
-    /** @type {!Array<!NodeRenderer>} */
+    /** @type {!Array.<!NodeRenderer>} */
     this.staticRenderers = [];
-  };
+  }
   FragmentRenderer.prototype = Object.create(BindingRenderer.prototype);
 
   FragmentRenderer.prototype.addRenderer = function(renderer) {
@@ -434,9 +442,9 @@
    * @extends {FragmentRenderer}
    * @constructor
    */
-  SectionRenderer = function(binding, insertionPath) {
+  function SectionRenderer(binding, insertionPath) {
     FragmentRenderer.call(this, document.createDocumentFragment(), binding, insertionPath);
-  };
+  }
   SectionRenderer.prototype = Object.create(FragmentRenderer.prototype);
 
   /**
@@ -469,14 +477,14 @@
   };
 
   /**
-   * @param {string} binging
+   * @param {string} binding
    * @param {!NodePath} insertionPath
    * @extends {FragmentRenderer}
    * @constructor
    */
-  ConditionalRenderer = function(binding, insertionPath) {
+  function ConditionalRenderer(binding, insertionPath) {
     FragmentRenderer.call(this, document.createDocumentFragment(), binding, insertionPath);
-  };
+  }
   ConditionalRenderer.prototype = Object.create(FragmentRenderer.prototype);
 
   /**
@@ -494,15 +502,15 @@
   };
 
   /**
-   * @param {string} binging
+   * @param {string} binding
    * @param {!NodePath} insertionPath
    * @extends {NodeRenderer}
    * @constructor
    */
-  PartialRenderer = function(binding, insertionPath) {
+  function PartialRenderer(binding, insertionPath) {
     NodeRenderer.call(this, insertionPath);
     this.binding = binding;
-  };
+  }
   PartialRenderer.prototype = Object.create(NodeRenderer.prototype);
 
   /**
@@ -525,11 +533,11 @@
    * Renderer which fills in attributes on a node.
    * @param {!NodePath} insertionPath
    * @param {string} attributeName
-   * @param {!Array<!Directive>} directives
+   * @param {!Array.<!Directive>} directives
    * @extends {NodeRenderer}
    * @constructor
    */
-  AttributeRenderer = function(placeholder, attributeName, directives) {
+  function AttributeRenderer(placeholder, attributeName, directives) {
     NodeRenderer.call(this, null);
     this.placeholder = placeholder;
     this.attributeName = attributeName;
@@ -557,7 +565,10 @@
     this.placeholder.setAttribute(this.attributeName, value);
   };
 
-  Directive = function(type, value) {
+  /**
+   * @constructor
+   */
+  function Directive(type, value) {
     this.type = type;
     this.value = value;
   };

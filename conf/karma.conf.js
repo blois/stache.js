@@ -51,7 +51,7 @@ module.exports = function(karma) {
       'karma-browserstack-launcher',
       'karma-chrome-launcher',
       'karma-firefox-launcher',
-                        'karma-ie-launcher',
+      'karma-ie-launcher',
       'karma-ios-launcher',
       'karma-safari-launcher',
       'karma-script-launcher',
@@ -64,9 +64,12 @@ module.exports = function(karma) {
       'conf/mocha.conf.js',
       'node_modules/chai/chai.js',
       'stache.js',
-      'test/js/*.js',
+      'test/js/utils.js',
+      'test/js/test.js',
+      'test/js/parser.js',
       {pattern: 'src/*', included: false},
-      {pattern: 'test/html/*.html', included: false}
+      {pattern: 'test/html/*.html', included: false},
+      {pattern: 'test/js/mustachejs.js', included: false}
     ]
   });
 };
